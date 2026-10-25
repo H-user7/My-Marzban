@@ -106,6 +106,54 @@
 
 # راهنمای نصب
 
+برای ساخت و اجرای این فورک از همین پوشه، فایل تنظیمات نمونه را کپی کنید، در صورت نیاز
+`.env` را تغییر دهید و Compose را اجرا کنید:
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose exec marzban marzban-cli admin create --sudo
+```
+
+Compose ایمیج `my-marzban:local` را از همین کد می‌سازد و شبکهٔ میزبان و volume موجود
+`/var/lib/marzban` را حفظ می‌کند. برای ماندگاری دیتابیس SQLite، پیش از اجرا مقدار
+`SQLALCHEMY_DATABASE_URL="sqlite:////var/lib/marzban/db.sqlite3"` را در `.env` تنظیم کنید.
+پنل از آدرس `http://SERVER_IP:8000/dashboard/` در دسترس است و به دامنه یا گواهی SSL
+نیاز ندارد. HTTP اطلاعات ورود و لینک‌های اشتراک را رمزگذاری نمی‌کند.
+آدرس پیش‌فرض `0.0.0.0:8000` است؛ با `UVICORN_HOST` و `UVICORN_PORT` می‌توانید آن را
+تغییر دهید. localhost، IPv4، IPv6 و سوکت یونیکس با `UVICORN_UDS` پشتیبانی می‌شوند.
+
+برای HTTPS اختیاری، هر دو متغیر `UVICORN_SSL_CERTFILE` و `UVICORN_SSL_KEYFILE` را
+تنظیم کنید و آدرس `https://YOUR_DOMAIN:8000/dashboard/` را باز کنید. استفاده از IP
+تحت پوشش گواهی هم ممکن است. اعتبارسنجی گواهی و تنظیم `UVICORN_SSL_CA_TYPE` حفظ شده‌اند.
+اگر فقط یکی از دو فایل تنظیم شود، برنامه هشدار می‌دهد و با HTTP اجرا می‌شود.
+همچنین می‌توانید HTTPS را در reverse proxy فعال کنید.
+
+متغیر اختیاری `XRAY_SUBSCRIPTION_URL_PREFIX` بر آدرس خودکار اشتراک اولویت دارد:
+
+```dotenv
+XRAY_SUBSCRIPTION_URL_PREFIX="http://203.0.113.10:8000"
+# XRAY_SUBSCRIPTION_URL_PREFIX="https://example.com/marzban"
+# XRAY_SUBSCRIPTION_URL_PREFIX="http://[2001:db8::10]:8000"
+# XRAY_SUBSCRIPTION_URL_PREFIX="https://*.example.com"
+```
+
+فاصله‌های ابتدا و انتها و اسلش‌های انتهایی حذف می‌شوند و همهٔ `*`ها در هر لینک با
+یک مقدار تصادفی یکسان جایگزین می‌شوند. مسیر اشتراک (پیش‌فرض `sub`) و قالب توکن حفظ
+می‌شوند. اگر پیشوند خالی باشد، داشبورد، API، تلگرام و CLI همگی لینک کامل را با IP
+صریح `UVICORN_HOST` یا IP عمومی شناسایی‌شده برای آدرس‌های wildcard یا نام میزبان، به همراه
+`UVICORN_PORT` تولید می‌کنند. IPv6 در کروشه قرار می‌گیرد و HTTPS فقط با تنظیم هر دو
+فایل SSL انتخاب می‌شود. آدرس‌های wildcard مانند `0.0.0.0` و `::` در لینک قرار نمی‌گیرند.
+
+در صورت استفاده از reverse proxy، سوکت یونیکس، NAT یا شکست تشخیص IP عمومی، ممکن است
+لازم باشد یک پیشوند قابل دسترس از بیرون، شامل پروتکل، پورت خارجی و مسیر دلخواه تنظیم
+کنید. در صورت شکست تشخیص IP، آدرس loopback استفاده می‌شود که فقط محلی قابل دسترس است.
+مسیر پیشوند باید در reverse proxy هم مسیریابی شود. آدرس نود همچنان می‌تواند IP یا
+دامنه باشد و احراز هویت نود با گواهی تغییری نکرده است.
+
+اسکریپت‌های نصب زیر نسخهٔ بالادستی را نصب می‌کنند؛ برای ساخت این فورک از دستورهای
+Compose بالا استفاده کنید.
+
 با دستور زیر مرزبان را با دیتابیس SQLite نصب کنید:
 
 ```bash
@@ -129,8 +177,8 @@ sudo bash -c "$(curl -sL https://github.com/Gozargah/Marzban-scripts/raw/master/
 - فایل های مرزبان در پوشه `/opt/marzban` قرار می‌گیرند
 - فایل تنظیمات در مسیر `/opt/marzban/.env` قرار می‌گیرد ([تنظیمات](#تنظیمات) را مشاهده کنید)
 - فایل های مهم (اطلاعات) مرزبان در مسیر `/usr/lib/marzban` قرار می‌گیرند
-به دلایل امنیتی، داشبورد مرزبان از طریق آیپی قابل دسترسی نیست. بنابراین، باید برای دامنه خود [گواهی SSL](https://gozargah.github.io/marzban/fa/examples/issue-ssl-certificate) بگیرید و از طریق آدرس https://YOUR_DOMAIN:8000/dashboard/ وارد داشبورد مرزبان شوید (نام دامنه خود را جایگزین YOUR_DOMAIN کنید)
-- همچنین می‌توانید از فوروارد کردن پورت SSH برای دسترسی لوکال به داشبورد مرزبان بدون دامنه استفاده کنید. نام کاربری و آیپی سرور خود را جایگزین `user@serverip` کنید و دستور زیر را اجرا کنید:
+- در این فورک، پنل با آدرس `http://SERVER_IP:8000/dashboard/` قابل دسترسی است. برای HTTPS اختیاری، [گواهی SSL](https://gozargah.github.io/marzban/fa/examples/issue-ssl-certificate) بگیرید، هر دو فایل SSL را تنظیم کنید و آدرس `https://YOUR_DOMAIN:8000/dashboard/` را باز کنید.
+- اگر صریحاً روی localhost اجرا می‌کنید، می‌توانید از فوروارد پورت SSH استفاده کنید. نام کاربری و آیپی سرور خود را جایگزین `user@serverip` کنید و دستور زیر را اجرا کنید:
 
 ```bash
 ssh -L 8000:localhost:8000 user@serverip
@@ -250,7 +298,7 @@ server {
 }
 ```
 
-به صورت پیشفرض مرزبان در آدرس `http://localhost:8000/dashboard` اجرا میشود. شما میتوانید با تغییر `UVICORN_HOST` و `UVICORN_PORT`، هاست و پورت را تغییر دهید.
+به صورت پیش‌فرض مرزبان روی `0.0.0.0:8000` اجرا می‌شود و از آدرس `http://SERVER_IP:8000/dashboard/` در دسترس است. با تغییر `UVICORN_HOST` و `UVICORN_PORT` می‌توانید آدرس و پورت را تغییر دهید؛ گواهی SSL اختیاری است.
 </details>
 
 # تنظیمات
@@ -271,7 +319,7 @@ server {
 |                                                                                                 مسیر فایل json تنظیمات xray (پیشفرض: `xray_config.json`) |                                                      XRAY_JSON                                                       |
 |                                                                                                         مسیر باینری xray (پیشفرض: `/usr/local/bin/xray`) |                                                 XRAY_EXECUTABLE_PATH                                                 |
 |                                                                                                    مسیر asset های xray (پیشفرض: `/usr/local/share/xray`) |                                                   XRAY_ASSETS_PATH                                                   |
-|                                  پیشوند (یا هاست) آدرس های اشتراکی (زمانی کاربرد دارد که نیاز دارید دامنه subscription link ها با دامنه پنل متفاوت باشد) |                                             XRAY_SUBSCRIPTION_URL_PREFIX                                             |
+|                       پیشوند اختیاری لینک اشتراک؛ در حالت خالی، IP سرور و UVICORN_PORT استفاده می‌شود و HTTPS فقط با تنظیم هر دو فایل SSL فعال است |                                             XRAY_SUBSCRIPTION_URL_PREFIX                                             |
 |                                                                                                         تگ inboundای که به عنوان fallback استفاده میشود. |                                              XRAY_FALLBACKS_INBOUND_TAG                                              |
 |                                                                                 تگ های inbound ای که لازم نیست در کانفیگ های ساخته شده وجود داشته باشند. |                                              XRAY_EXCLUDE_INBOUND_TAGS                                               |
 |                                                                                                                آدرس محل template های شخصی سازی شده کاربر |                                              CUSTOM_TEMPLATES_DIRECTORY                                              |

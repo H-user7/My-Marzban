@@ -25,8 +25,9 @@ def get_link(
     """
     Prints the given user's subscription link.
 
-    NOTE: This command needs `XRAY_SUBSCRIPTION_URL_PREFIX` environment variable to be set
-      in order to work correctly.
+    Uses XRAY_SUBSCRIPTION_URL_PREFIX when set; otherwise uses the server IP and
+    UVICORN_PORT, with HTTPS only when both SSL files are configured. Set an
+    externally reachable prefix for reverse proxies, Unix sockets, NAT, or failed IP detection.
     """
     with GetDB() as db:
         user: UserResponse = UserResponse.model_validate(utils.get_user(db, username))

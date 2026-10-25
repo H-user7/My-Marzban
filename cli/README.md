@@ -1,5 +1,12 @@
 # CLI
 
+For this checkout, start the local image with `docker compose up -d --build`, then
+run commands with `docker compose exec marzban marzban-cli ...` (or
+`./marzban-cli.py ...` for a manual install). The panel is available at
+`http://SERVER_IP:8000/dashboard/` without a domain or certificate. HTTP does not
+encrypt credentials or subscription links. Optional HTTPS/domain access uses both
+`UVICORN_SSL_CERTFILE` and `UVICORN_SSL_KEYFILE`, or an HTTPS reverse proxy.
+
 **Usage**:
 
 ```console
@@ -223,8 +230,22 @@ $ subscription get-config [OPTIONS]
 
 Prints the given user's subscription link.
 
-NOTE: This command needs `XRAY_SUBSCRIPTION_URL_PREFIX` environment variable to be set
-  in order to work correctly.
+Uses the same absolute subscription URLs as the dashboard, API and Telegram.
+`XRAY_SUBSCRIPTION_URL_PREFIX` takes priority when set, for example
+`http://203.0.113.10:8000`, `https://example.com/marzban`, or
+`http://[2001:db8::10]:8000`. Whitespace and trailing slashes are removed, and `*`
+wildcards are replaced with the same random value within each URL.
+
+With an empty prefix, the explicit `UVICORN_HOST` IP is used, or the detected public
+IP for wildcard/hostname listeners, plus `UVICORN_PORT`. IPv6 literals are bracketed.
+Both SSL files must be configured for automatic HTTPS; otherwise HTTP is used.
+Subscription paths and tokens are unchanged. For reverse proxies, Unix sockets,
+NAT, or failed IP detection (which falls back to loopback), set an explicit
+externally reachable prefix with the correct scheme, port and any routed path.
+
+```bash
+docker compose exec marzban marzban-cli subscription get-link -u user1234
+```
 
 **Usage**:
 

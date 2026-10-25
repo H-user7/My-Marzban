@@ -1,6 +1,7 @@
 services:
   marzban:
-    image: gozargah/marzban:latest
+    build: .
+    image: my-marzban:local
     restart: always
     env_file: .env
     network_mode: host

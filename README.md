@@ -108,6 +108,56 @@ Marzban is user-friendly, feature-rich and reliable. It lets you to create diffe
 
 # Installation guide
 
+To build and run this fork from your checkout, copy the example configuration,
+adjust `.env` as needed, and start Compose:
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose exec marzban marzban-cli admin create --sudo
+```
+
+Compose builds `my-marzban:local` from this directory and keeps the existing host
+network and `/var/lib/marzban` volume. For a persistent SQLite database, set
+`SQLALCHEMY_DATABASE_URL="sqlite:////var/lib/marzban/db.sqlite3"` in `.env` before starting.
+Open `http://SERVER_IP:8000/dashboard/`; a domain and SSL certificate are optional.
+HTTP does not encrypt credentials or subscription links. The default listener is
+`0.0.0.0:8000`; set `UVICORN_HOST` and `UVICORN_PORT` for another address or port.
+Explicit localhost, IPv4, IPv6 and `UVICORN_UDS` Unix socket bindings are supported.
+
+For optional HTTPS, configure both `UVICORN_SSL_CERTFILE` and
+`UVICORN_SSL_KEYFILE`, then use `https://YOUR_DOMAIN:8000/dashboard/` (or an IP
+covered by the certificate). Existing certificate validation and
+`UVICORN_SSL_CA_TYPE` settings still apply. Configuring only one SSL file logs a
+warning and starts HTTP. A reverse proxy may also terminate HTTPS.
+
+Subscription URLs use `XRAY_SUBSCRIPTION_URL_PREFIX` when set, for example:
+
+```dotenv
+XRAY_SUBSCRIPTION_URL_PREFIX="http://203.0.113.10:8000"
+# Or a domain, IPv6 URL, or proxy path prefix:
+# XRAY_SUBSCRIPTION_URL_PREFIX="https://example.com/marzban"
+# XRAY_SUBSCRIPTION_URL_PREFIX="http://[2001:db8::10]:8000"
+# XRAY_SUBSCRIPTION_URL_PREFIX="https://*.example.com"
+```
+
+Whitespace and trailing slashes are removed. Each `*` is replaced with the same
+random value for that URL. The configured subscription path (default `sub`) and
+existing token format are preserved. With an empty prefix, all clients (dashboard,
+API, Telegram and CLI) receive an absolute URL using the explicit listener IP or,
+for wildcard/hostname listeners, the already detected public IP, plus
+`UVICORN_PORT`. IPv6 addresses are bracketed; HTTPS is used only when both SSL
+files are configured. Wildcard listening addresses are never advertised.
+
+Reverse proxies, Unix sockets, NAT, or failed public IP detection may require an
+explicit externally reachable prefix, including its scheme, external port and
+path if needed. Failed detection falls back to loopback, which is only reachable
+locally. A path prefix must also be routed by your reverse proxy. Node addresses
+continue to accept IPs and domains; node certificate authentication is unchanged.
+
+The upstream installation scripts below install upstream releases; use the Compose
+instructions above to build this customized checkout.
+
 Run the following command to install Marzban with SQLite database:
 
 ```bash
@@ -131,8 +181,8 @@ Once the installation is complete:
 - The Marzban files will be located at `/opt/marzban`
 - The configuration file can be found at `/opt/marzban/.env` (refer to [configurations](#configuration) section to see variables)
 - The data files will be placed at `/var/lib/marzban`
-- For security reasons, the Marzban dashboard is not accessible via IP address. Therefore, you must [obtain SSL certificate](https://gozargah.github.io/marzban/en/examples/issue-ssl-certificate) and access your Marzban dashboard by opening a web browser and navigating to `https://YOUR_DOMAIN:8000/dashboard/` (replace YOUR_DOMAIN with your actual domain)
-- You can also use SSH port forwarding to access the Marzban dashboard locally without a domain. Replace `user@serverip` with your actual SSH username and server IP and Run the command below:
+- In this fork, the dashboard is accessible at `http://SERVER_IP:8000/dashboard/`. For optional HTTPS, [obtain an SSL certificate](https://gozargah.github.io/marzban/en/examples/issue-ssl-certificate), configure both SSL files and open `https://YOUR_DOMAIN:8000/dashboard/`.
+- If you explicitly bind to localhost, you can use SSH port forwarding. Replace `user@serverip` with your actual SSH username and server IP and run:
 
 ```bash
 ssh -L 8000:localhost:8000 user@serverip
@@ -279,7 +329,7 @@ server {
 }
 ```
 
-By default the app will be run on `http://localhost:8000/dashboard`. You can configure it using changing the `UVICORN_HOST` and `UVICORN_PORT` environment variables.
+By default the app listens on `0.0.0.0:8000` and is accessible at `http://SERVER_IP:8000/dashboard/`. Change `UVICORN_HOST` and `UVICORN_PORT` to configure the binding; certificates are optional.
 </details>
 
 # Configuration
@@ -300,7 +350,7 @@ By default the app will be run on `http://localhost:8000/dashboard`. You can con
 | XRAY_JSON                                | Path of Xray's json config file (default: `xray_config.json`)                                                            |
 | XRAY_EXECUTABLE_PATH                     | Path of Xray binary (default: `/usr/local/bin/xray`)                                                                     |
 | XRAY_ASSETS_PATH                         | Path of Xray assets (default: `/usr/local/share/xray`)                                                                   |
-| XRAY_SUBSCRIPTION_URL_PREFIX             | Prefix of subscription URLs                                                                                              |
+| XRAY_SUBSCRIPTION_URL_PREFIX             | External subscription URL prefix (optional); defaults to the server IP and UVICORN_PORT, with HTTPS only when both SSL files are set |
 | XRAY_FALLBACKS_INBOUND_TAG               | Tag of the inbound that includes fallbacks, needed in the case you're using fallbacks                                    |
 | XRAY_EXCLUDE_INBOUND_TAGS                | Tags of the inbounds that shouldn't be managed and included in links by application                                      |
 | CUSTOM_TEMPLATES_DIRECTORY               | Customized templates directory (default: `app/templates`)                                                                |
